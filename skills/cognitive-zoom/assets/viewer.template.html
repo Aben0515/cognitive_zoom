@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cognitive Zoom — 可互動認知縮放視圖</title>
+  <style>
+    /* __HIGHLIGHT_CSS__ */
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-card: #182234;
+      --bg-hover: #334155;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --border-color: #334155;
+      --border-accent: #38bdf8;
+      --accent-blue: #38bdf8;
+      --accent-green: #34d399;
+      --accent-amber: #facc15;
+      --accent-orange: #fb923c;
+      --accent-rose: #f43f5e;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --shadow-main: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+    body.theme-light {
+      --bg-primary: #f8fafc;
+      --bg-secondary: #f1f5f9;
+      --bg-card: #ffffff;
+      --bg-hover: #e2e8f0;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --border-color: #e2e8f0;
+      --shadow-main: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    .header-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .brand-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .widget-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--bg-secondary);
+      padding: 8px 16px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .slider-title {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .current-level-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+    }
+    .slider-input {
+      -webkit-appearance: none;
+      width: 180px;
+      height: 6px;
+      border-radius: 4px;
+      background: #334155;
+      outline: none;
+      cursor: pointer;
+    }
+    .slider-input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+    }
+    .slider-ticks {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .theme-btn {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      border-radius: var(--radius-md);
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .main-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 20px 80px 20px;
+    }
+    .question-banner {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .zoom-answer-tree {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .zoom-node {
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--level-color, #94a3b8);
+      padding: 16px 20px;
+      transition: opacity 0.2s ease, max-height 0.2s ease;
+      position: relative;
+    }
+    .zoom-node.node-level-0.is-full {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.1), rgba(15, 23, 42, 0.8));
+      border: 1px solid var(--accent-blue);
+      border-left: 6px solid var(--accent-blue);
+      padding: 24px 28px;
+    }
+    .zoom-node.node-level-0.is-full .node-body {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #e0f2fe;
+    }
+    .zoom-node.node-level-0.is-header {
+      padding: 8px 16px;
+      background: var(--bg-secondary);
+      border-left: 3px solid var(--accent-blue);
+    }
+    .zoom-node.node-level-0.is-header .node-body {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--accent-blue);
+    }
+    .node-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .level-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .node-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .node-toolbar {
+      margin-left: auto;
+      display: flex;
+      gap: 6px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .zoom-node:hover .node-toolbar { opacity: 1; }
+    .node-tool-btn {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 3px 8px;
+      font-size: 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .node-body {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+    }
+    .node-body p { margin-bottom: 10px; }
+    .node-body ul, .node-body ol { padding-left: 20px; margin-bottom: 10px; }
+    .code-container {
+      margin: 12px 0;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      background: #090d16;
+    }
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 12px;
+      background: #131c2e;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .copy-code-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    pre code {
+      display: block;
+      padding: 14px 16px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 0.88rem;
+      overflow-x: auto;
+    }
+    .node-hint-placeholder {
+      display: none;
+      font-size: 0.85rem;
+      color: var(--accent-blue);
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px dashed rgba(56, 189, 248, 0.4);
+      margin-top: 6px;
+    }
+    .zoom-node.is-hint .node-body { display: none; }
+    .zoom-node.is-hint .node-hint-placeholder { display: block; }
+    .zoom-node.is-hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header-bar">
+    <div class="brand-title">🔍 Cognitive Zoom</div>
+    <div class="widget-container">
+      <div>
+        <div class="slider-title">認知密度 (Zoom)</div>
+        <div id="currentLevelName" class="current-level-name">🛣️ 街道視角</div>
+      </div>
+      <div>
+        <input type="range" id="cognitiveSlider" class="slider-input" min="0.0" max="4.0" step="0.05" value="2.0">
+        <div class="slider-ticks">
+          <span>🛰️ 0</span>
+          <span>🏙️ 1</span>
+          <span>🛣️ 2</span>
+          <span>🏗️ 3</span>
+          <span>🔬 4</span>
+        </div>
+      </div>
+    </div>
+    <button id="themeToggleBtn" class="theme-btn">☀️ 淺色</button>
+  </header>
+
+  <main class="main-container">
+    <div id="questionBanner" class="question-banner">問題載入中...</div>
+    <div id="treeContainer" class="zoom-answer-tree"></div>
+  </main>
+
+  <!-- Embedded Data -->
+  <script id="zoomData" type="application/json">
+    /* __DATA_JSON__ */
+  </script>
+
+  <!-- Embedded Core Libraries -->
+  <script>/* __MARKED_JS__ */</script>
+  <script>/* __PURIFY_JS__ */</script>
+  <script>/* __HIGHLIGHT_JS__ */</script>
+
+  <!-- Runtime Logic -->
+  <script>
+    const LEVEL_COLORS = {
+      0: "#38bdf8",
+      1: "#34d399",
+      2: "#facc15",
+      3: "#fb923c",
+      4: "#f43f5e"
+    };
+    const LEVEL_NAMES = {
+      0: "🛰️ 衛星",
+      1: "🏙️ 城市",
+      2: "🛣️ 街道",
+      3: "🏗️ 建築",
+      4: "🔬 顯微鏡"
+    };
+
+    function escapeHtml(s) {
+      if (!s) return "";
+      return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    const rawData = JSON.parse(document.getElementById("zoomData").textContent);
+    const nodes = rawData.nodes || [];
+    const questionText = rawData.question || "";
+    document.getElementById("questionBanner").textContent = "題目：" + questionText;
+
+    const nodeMap = {};
+    nodes.forEach(n => nodeMap[n.id] = n);
+
+    let currentZoom = rawData.preferred_zoom || 2.0;
+    const localOverrides = {};
+    const treeContainer = document.getElementById("treeContainer");
+    const sliderInput = document.getElementById("cognitiveSlider");
+    const levelNameEl = document.getElementById("currentLevelName");
+
+    sliderInput.value = currentZoom;
+
+    // Render nodes
+    nodes.forEach(node => {
+      const nodeEl = document.createElement("div");
+      nodeEl.className = `zoom-node node-level-${node.level} kind-${node.kind}`;
+      nodeEl.dataset.nodeId = node.id;
+      nodeEl.dataset.level = node.level;
+      if (node.parent_id) nodeEl.dataset.parentId = node.parent_id;
+      nodeEl.style.setProperty("--level-color", LEVEL_COLORS[node.level] || "#94a3b8");
+
+      let contentHtml = "";
+      if (node.content && window.marked && window.DOMPurify) {
+        contentHtml = DOMPurify.sanitize(marked.parse(node.content));
+      } else if (node.content) {
+        contentHtml = "<p>" + escapeHtml(node.content) + "</p>";
+      }
+
+      let codeHtml = "";
+      if (node.code && node.code.source) {
+        const lang = node.code.lang || "c";
+        codeHtml = `
+          <div class="code-container">
+            <div class="code-header">
+              <span>${escapeHtml(lang)}</span>
+              <button class="copy-code-btn" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(node.code.source)}'))">📋 複製</button>
+            </div>
+            <pre><code class="language-${lang}">${escapeHtml(node.code.source)}</code></pre>
+          </div>
+        `;
+      }
+
+      nodeEl.innerHTML = `
+        <div class="node-header">
+          <span class="level-tag" style="background:${LEVEL_COLORS[node.level]}22; color:${LEVEL_COLORS[node.level]}">
+            L${node.level} ${escapeHtml(node.kind)}
+          </span>
+          <span class="node-title">${escapeHtml(node.title || "")}</span>
+          <div class="node-toolbar">
+            <button class="node-tool-btn" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(node.content || node.code?.source || "")}'))">📋 複製</button>
+            <button class="node-tool-btn" onclick="toggleLocal('${node.id}', ${node.level})">⤢ 縮放</button>
+          </div>
+        </div>
+        <div class="node-body">
+          ${contentHtml}
+          ${codeHtml}
+        </div>
+        <div class="node-hint-placeholder" onclick="toggleLocal('${node.id}', ${node.level})">
+          ＋ 展開 ${LEVEL_NAMES[node.level] || ''}：${escapeHtml(node.hint || node.title || '深入查看')}
+        </div>
+      `;
+
+      treeContainer.appendChild(nodeEl);
+    });
+
+    if (window.hljs) {
+      document.querySelectorAll("pre code").forEach(el => hljs.highlightElement(el));
+    }
+
+    function toggleLocal(nid, lvl) {
+      if (localOverrides[nid] !== undefined) {
+        delete localOverrides[nid];
+      } else {
+        localOverrides[nid] = lvl + 1;
+      }
+      updateVisibility();
+    }
+    window.toggleLocal = toggleLocal;
+
+    function getEffectiveZoom(node) {
+      let curr = node;
+      while (curr) {
+        if (localOverrides[curr.id] !== undefined) return localOverrides[curr.id];
+        curr = curr.parent_id ? nodeMap[curr.parent_id] : null;
+      }
+      return currentZoom;
+    }
+
+    function updateVisibility() {
+      const floorZ = Math.floor(currentZoom);
+      const frac = Math.round((currentZoom - floorZ) * 100);
+      const baseName = LEVEL_NAMES[floorZ] || LEVEL_NAMES[0];
+      levelNameEl.textContent = frac > 0 ? `${baseName} (+${frac}%)` : baseName;
+
+      document.querySelectorAll(".zoom-node").forEach(nodeEl => {
+        const nid = nodeEl.dataset.nodeId;
+        const node = nodeMap[nid];
+        if (!node) return;
+
+        let mode = "hidden";
+        let opacity = 1.0;
+
+        if (node.level === 0) {
+          mode = currentZoom >= 1.0 ? "header" : "full";
+        } else {
+          const ez = getEffectiveZoom(node);
+          const ezFloor = Math.floor(ez);
+          const f = ez - ezFloor;
+          if (node.level <= ezFloor) {
+            mode = "full";
+          } else if (node.level === ezFloor + 1) {
+            if (f === 0) {
+              mode = "hint";
+            } else {
+              mode = "fade";
+              opacity = Math.max(0.1, f);
+            }
+          }
+        }
+
+        nodeEl.classList.remove("is-hidden", "is-hint", "is-fade", "is-full", "is-header");
+        nodeEl.classList.add(`is-${mode}`);
+        if (mode === "hidden") {
+          nodeEl.style.display = "none";
+        } else {
+          nodeEl.style.display = "block";
+          nodeEl.style.opacity = opacity.toFixed(2);
+        }
+      });
+    }
+
+    function setZoomWithAnchor(newZ, targetEl) {
+      const clamped = Math.max(0, Math.min(4, Math.round(newZ * 100) / 100));
+      const centerY = window.innerHeight / 2;
+      let anchor = targetEl?.closest(".zoom-node");
+      if (!anchor) {
+        document.querySelectorAll(".zoom-node:not(.is-hidden)").forEach(el => {
+          const r = el.getBoundingClientRect();
+          if (Math.abs(r.top - centerY) < 150) anchor = el;
+        });
+      }
+      const initialTop = anchor ? anchor.getBoundingClientRect().top : 0;
+      currentZoom = clamped;
+      sliderInput.value = clamped;
+      updateVisibility();
+
+      if (anchor) {
+        requestAnimationFrame(() => {
+          const newTop = anchor.getBoundingClientRect().top;
+          const delta = newTop - initialTop;
+          if (Math.abs(delta) > 1) window.scrollBy({ top: delta, behavior: "instant" });
+        });
+      }
+    }
+
+    sliderInput.addEventListener("input", e => setZoomWithAnchor(parseFloat(e.target.value)));
+
+    window.addEventListener("wheel", e => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const step = e.deltaY < 0 ? 0.25 : -0.25;
+        const target = document.elementFromPoint(e.clientX, e.clientY);
+        setZoomWithAnchor(currentZoom + step, target);
+      } else if (e.altKey) {
+        const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".zoom-node");
+        if (target) {
+          e.preventDefault();
+          const nid = target.dataset.nodeId;
+          const curr = localOverrides[nid] ?? currentZoom;
+          const step = e.deltaY < 0 ? 0.5 : -0.5;
+          localOverrides[nid] = Math.max(0, Math.min(4, curr + step));
+          updateVisibility();
+        }
+      }
+    }, { passive: false });
+
+    window.addEventListener("keydown", e => {
+      if (e.key >= "0" && e.key <= "4") setZoomWithAnchor(parseFloat(e.key));
+      else if (e.key === "+" || e.key === "=") setZoomWithAnchor(currentZoom + 0.5);
+      else if (e.key === "-" || e.key === "_") setZoomWithAnchor(currentZoom - 0.5);
+    });
+
+    document.getElementById("themeToggleBtn").addEventListener("click", () => {
+      const isLight = document.body.classList.toggle("theme-light");
+      document.getElementById("themeToggleBtn").textContent = isLight ? "🌙 深色" : "☀️ 淺色";
+    });
+
+    updateVisibility();
+  </script>
+</body>
+</html>

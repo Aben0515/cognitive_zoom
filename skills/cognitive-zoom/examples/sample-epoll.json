@@ -1,0 +1,106 @@
+{
+  "question": "什麼是 epoll？跟 select 差在哪？",
+  "preferred_zoom": 2.0,
+  "nodes": [
+    {
+      "id": "n1",
+      "parent_id": null,
+      "level": 0,
+      "kind": "tldr",
+      "title": "核心結論",
+      "content": "用 epoll 而不是 select，因為 O(1) 事件就緒通知與避免全量輪詢。",
+      "hint": "一語道破"
+    },
+    {
+      "id": "n2",
+      "parent_id": "n1",
+      "level": 1,
+      "kind": "card",
+      "title": "關鍵要點",
+      "content": "- 規模擴展：select 線性掃描 (O(N))，epoll 紅黑樹註冊 + 就緒鏈結串列 (O(1))。\n- 記憶體傳輸：select 每次呼叫皆在用戶態與核心態間複製 fd_set，epoll mmap 共享記憶體。\n- 觸發模式：epoll 提供邊緣觸發 (ET) 與準位觸發 (LT)。\n\n建議：高並發連線場景一律採用 epoll (Linux) 或 kqueue (BSD/macOS)。",
+      "hint": "重點與行動建議"
+    },
+    {
+      "id": "n3",
+      "parent_id": "n2",
+      "level": 2,
+      "kind": "paragraph",
+      "title": "架構與就緒通知機制比較",
+      "content": "select 與 poll 的根本缺陷在於無狀態：核心不維護被監控的檔案描述子列表。應用程式每次呼叫 select()，都必須將全部 fd 集合複製到核心態。epoll 透過 epoll_create 在核心建立事件表，使用紅黑樹保存監聽對象，並以雙向鏈結串列保存就緒事件，真正達成事件驅動。",
+      "hint": "架構與機制差異"
+    },
+    {
+      "id": "n4",
+      "parent_id": "n3",
+      "level": 3,
+      "kind": "paragraph",
+      "title": "select 的 1024 限制與 poll/do_select 瓶頸",
+      "content": "select 使用固定大小的 fd_set bitmap，在 Linux 預設 FD_SETSIZE 為 1024。每次呼叫 select() 核心都會遍歷所有描述子執行 poll 方法，喚醒時仍須再度掃描確認誰已就緒，時間複雜度為 O(N)。",
+      "hint": "select 1024 限制"
+    },
+    {
+      "id": "n5",
+      "parent_id": "n4",
+      "level": 4,
+      "kind": "deep_note",
+      "title": "核心 do_select 與 copy_from_user",
+      "content": "進入 sys_select 後，核心使用 copy_from_user 複製 bitmap 到核心堆疊或分配的緩衝區。do_select 迴圈依次呼叫各驅動的 file->f_op->poll。等待佇列使用 poll_wqueues 結構將目前行程加入各 socket 的 wait_queue。",
+      "hint": "do_select 核心呼叫"
+    },
+    {
+      "id": "n6",
+      "parent_id": "n3",
+      "level": 3,
+      "kind": "paragraph",
+      "title": "epoll 核心內部：紅黑樹與雙向就緒鏈結串列",
+      "content": "epoll_create 建立 struct eventpoll 物件。epoll_ctl 操作紅黑樹 (rbr) 插入、修改或刪除監控的 socket，複雜度為 O(log N)。當硬體網卡中斷到達並經由 TCP/IP 堆疊解包，socket 的 sock_def_readable 回呼會將事件掛入 eventpoll.rdllist 雙向鏈結串列。",
+      "hint": "epoll 核心結構"
+    },
+    {
+      "id": "n7",
+      "parent_id": "n6",
+      "level": 4,
+      "kind": "deep_note",
+      "title": "eventpoll 結構體記憶體佈局",
+      "content": "Linux 核心 fs/eventpoll.c 中定義的 struct eventpoll 包含：\n- spinlock_t lock (32-bit 自旋鎖，保護 rdllist)\n- struct mutex mtx (互斥鎖，保護紅黑樹 rbr)\n- wait_queue_head_t wq (等待佇列，等待 epoll_wait 的行程)\n- struct list_head rdllist (雙向循環鏈結串列，存放就緒 epitem)\n- struct rb_root_cached rbr (紅黑樹根節點與最左節點快取)",
+      "hint": "eventpoll struct 佈局"
+    },
+    {
+      "id": "n8",
+      "parent_id": "n2",
+      "level": 2,
+      "kind": "code",
+      "title": "epoll 最小可用範例",
+      "content": "",
+      "code": {
+        "lang": "c",
+        "source": "#include <sys/epoll.h>\n#include <unistd.h>\n#include <stdio.h>\n\nint main() {\n    int epfd = epoll_create1(0);\n    struct epoll_event ev, events[10];\n    ev.events = EPOLLIN;\n    ev.data.fd = 0;\n    epoll_ctl(epfd, EPOLL_CTL_ADD, 0, &ev);\n    printf(\"Waiting for input...\\n\");\n    int nfds = epoll_wait(epfd, events, 10, -1);\n    printf(\"Events received: %d\\n\", nfds);\n    close(epfd);\n    return 0;\n}",
+        "caption": "epoll 最小可用範例 (C 語言)"
+      },
+      "hint": "最小可用程式碼"
+    },
+    {
+      "id": "n9",
+      "parent_id": "n8",
+      "level": 3,
+      "kind": "callout",
+      "title": "邊緣觸發 (Edge-Triggered) 必須搭配 Non-blocking 與 EAGAIN 迴圈",
+      "content": "在 EPOLLET 模式下，事件就緒只在狀態變化時通知一次。若使用者沒有以迴圈呼叫 read() 直到返回 EAGAIN 或 EWOULDBLOCK，緩衝區殘留的資料將再也收不到通知，導致連線永久飢餓。",
+      "hint": "ET 餓死陷阱"
+    },
+    {
+      "id": "n10",
+      "parent_id": "n9",
+      "level": 4,
+      "kind": "asm",
+      "title": "epoll_wait Syscall 與暫存器 ABI (x86_64)",
+      "content": "",
+      "code": {
+        "lang": "x86asm",
+        "source": "; Linux x86_64 系统调用: epoll_wait(epfd, events, maxevents, timeout)\n; rax = 232 (sys_epoll_wait)\n; rdi = epfd (int)\n; rsi = events (struct epoll_event*)\n; rdx = maxevents (int)\n; r10 = timeout (int)\nmov rax, 232\nmov rdi, [rbp-4]       ; epfd\nlea rsi, [rbp-160]     ; events 緩衝區\nmov rdx, 10            ; maxevents\nmov r10, -1            ; 無限期等待\nsyscall\n; 返回值存放於 rax: >=0 代表就緒數量, <0 為 -errno",
+        "caption": "x86_64 epoll_wait 系統呼叫暫存器傳參"
+      },
+      "hint": "sys_epoll_wait x86_64 暫存器"
+    }
+  ]
+}

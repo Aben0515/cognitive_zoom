@@ -1,0 +1,39 @@
+{
+  "name": "cognitive-zoom-dsh",
+  "version": "0.1.0",
+  "description": "Cognitive Flow Zoom 認知負荷自適應縮放 — DeepSeek Harness 技能插件。像 Google Maps 一樣，對話內容可以用滾輪或滑桿無段放大縮小（L0 衛星視角一句話結論 ⟷ L4 顯微鏡底層 syscall 與組合語言）。輸出單一獨立 HTML 視圖卡片，不需外部 API Key。",
+  "license": "MIT",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node skills/cognitive-zoom/scripts/render.test.mjs"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "agent-skill",
+    "cognitive-zoom",
+    "multi-resolution-rendering",
+    "hierarchical-ast",
+    "progressive-disclosure"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
