@@ -18,7 +18,7 @@
 ### 方式一：從 GitHub 安裝（發布後推薦）
 在 DSH 插件市集搜尋或直接輸入 GitHub 來源：
 ```bash
-github:<您的GitHub用戶名>/cognitive-zoom-dsh
+github:Aben0515/cognitive_zoom
 ```
 
 ### 方式二：本機開發模式（Local Link）

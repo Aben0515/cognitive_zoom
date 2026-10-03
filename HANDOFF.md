@@ -74,8 +74,8 @@ git init -b main
 git add .
 git commit -m "feat: initial release of cognitive-zoom-dsh v0.1.0"
 
-# 4. 關聯到使用者在 GitHub 上建立的新倉庫 (建議名稱: cognitive-zoom-dsh)
-git remote add origin https://github.com/<使用者名稱>/cognitive-zoom-dsh.git
+# 4. 關聯到使用者在 GitHub 上建立的新倉庫 (已建立: Aben0515/cognitive_zoom)
+git remote add origin https://github.com/Aben0515/cognitive_zoom.git
 git push -u origin main
 ```
 
@@ -88,7 +88,7 @@ git push -u origin main
 ### 方式 A：在 DSH 市集 / 插件指令直接安裝（最簡便）
 在 DSH 介面或命令行輸入：
 ```bash
-github:<使用者名稱>/cognitive-zoom-dsh
+github:Aben0515/cognitive_zoom
 ```
 
 ### 方式 B：本機 Link 開發模式（發布前即可立即測試）
