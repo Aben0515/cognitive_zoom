@@ -8,3 +8,5 @@
         providerName: cognitive-zoom-plugin
         includeDefaultRoots: false
         bundledSkillDir: !!js process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('cognitive-zoom-dsh/package.json')), 'skills')
+    - id: cognitive-zoom-client
+      name: cognitive-zoom-dsh
